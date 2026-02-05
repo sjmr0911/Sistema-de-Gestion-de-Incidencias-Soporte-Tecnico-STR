@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Sistema STR - Soporte Técnico</title>
+    <script src="/static/app.js" defer></script>
+
+    <style>
+        /* ====== BASE ====== */
+        body {
+            font-family: "Segoe UI", Roboto, Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 0;
+            color: #1f2937;
+        }
+
+        header {
+            background: linear-gradient(90deg, #0f172a, #1e293b);
+            color: white;
+            padding: 18px 30px;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        footer {
+            margin-top: 40px;
+            padding: 12px;
+            text-align: center;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 25px;
+            padding: 30px;
+        }
+
+        /* ====== TITULOS ====== */
+        h2 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            margin-top: 12px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        /* ====== FORMULARIOS ====== */
+        input, textarea, select {
+            width: 100%;
+            padding: 9px;
+            margin-top: 4px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 70px;
+        }
+
+        /* ====== BOTONES ====== */
+        button {
+            width: 100%;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        /* ====== CARDS ====== */
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        }
+
+        /* ====== TABLAS ====== */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            background: #e5e7eb;
+            text-align: left;
+            padding: 8px;
+            font-weight: 700;
+        }
+
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #e5e7eb;
+            font-weight: 500;
+        }
+
+        /* ====== SEVERIDADES ====== */
+        .sev-1 { background: #dcfce7; font-weight: 700; } /* Baja */
+        .sev-2 { background: #fef9c3; font-weight: 700; } /* Media */
+        .sev-3 { background: #fde68a; font-weight: 700; } /* Alta */
+        .sev-4 { background: #fecaca; font-weight: 700; } /* Crítica */
+
+        /* ====== ESTADOS ====== */
+        .status {
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .status-escalate {
+            color: #b91c1c;
+        }
+
+        .status-log {
+            color: #065f46;
+        }
+
+        /* ====== METRICAS ====== */
+        #metrics {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1e40af;
+        }
+
+        #result {
+            font-size: 14px;
+            font-weight: 700;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    Sistema de Gestión de Incidencias – STR
+</header>
+
+<div class="container">
+
+    <!-- PANEL IZQUIERDO -->
+    <div class="card">
+        <h2>Registrar Incidencia</h2>
+
+        <label>Usuario</label>
+        <input id="user" placeholder="Nombre del usuario">
+
+        <label>Descripción</label>
+        <textarea id="desc" placeholder="Describe la incidencia"></textarea>
+
+        <label>Tipo</label>
+        <select id="type">
+            <option value="red">Red</option>
+            <option value="sistema">Sistema</option>
+            <option value="seguridad">Seguridad</option>
+            <option value="servicio">Servicio esencial</option>
+        </select>
+
+        <label>Severidad</label>
+        <select id="sev">
+            <option value="1">Baja</option>
+            <option value="2">Media</option>
+            <option value="3">Alta</option>
+            <option value="4">Crítica</option>
+        </select>
+
+        <button class="btn-primary" onclick="sendIncident()">
+            Enviar Incidencia
+        </button>
+
+        <button class="btn-danger" onclick="stressTest()">
+            ⚡ Forzar Estrés STR
+        </button>
+
+        <button class="btn-secondary" onclick="resetSystem()">
+            🧹 Limpiar Sistema
+        </button>
+
+        <div id="result"></div>
+    </div>
+
+    <!-- PANEL DERECHO -->
+    <div>
+
+        <div class="card">
+            <h3>Incidencias recientes</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuario</th>
+                        <th>Tipo</th>
+                        <th>Sev</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="incidents"></tbody>
+            </table>
+        </div>
+
+        <br>
+
+        <div class="card">
+            <h3>Errores STR</h3>
+            <ul id="errors"></ul>
+        </div>
+
+        <br>
+
+        <div class="card">
+            <h3>Métricas STR</h3>
+            <div id="metrics"></div>
+            <p style="font-size:13px; color:#374151; margin-top:6px;">
+                <strong>Sistema de Tiempo Real Blando:</strong>
+                Los retrasos afectan la calidad del servicio sin generar fallos catastróficos.
+            </p>
+        </div>
+
+    </div>
+</div>
+
+<footer>
+    STR – Sistema de Gestión de Incidencias de Soporte Técnico 
+</footer>
+
+</body>
+</html>
