@@ -5,6 +5,15 @@ from database import save_incident, log_error
 
 QUEUE = asyncio.PriorityQueue()
 
+# ==============================
+# IMPLEMENTACIÓN DE SEMÁFORO
+# Controla concurrencia de incidencias críticas
+# ==============================
+
+MAX_CRITICAL_ACTIONS = 2  # solo 2 críticas al mismo tiempo
+CRITICAL_SEMAPHORE = asyncio.Semaphore(MAX_CRITICAL_ACTIONS)
+
+
 DEADLINE_MS = 50
 MAX_START_DELAY = 20
 MIN_INTERVAL = 0.01  # 10 ms
@@ -48,9 +57,17 @@ async def scheduler():
             await log_error("SCHEDULER", "Queue delay violation")
 
         try:
-            action = control_action(incident["severity"])
-            incident["status"] = action
-            await save_incident(incident)
+            # 🔹 Si es crítica, usar semáforo
+            if incident["severity"] == 4:
+                async with CRITICAL_SEMAPHORE:
+                    action = control_action(incident["severity"])
+                    await asyncio.sleep(0.02)  # simulación carga pesada
+                    incident["status"] = action
+                    await save_incident(incident)
+            else:
+                action = control_action(incident["severity"])
+                incident["status"] = action
+                await save_incident(incident)
 
         except Exception as e:
             await log_error("PROCESSING", str(e))
@@ -62,8 +79,16 @@ async def scheduler():
             await log_error("DEADLINE", "Deadline missed")
 
         update_metrics(total_ms, violated)
+
 def reset_metrics():
     METRICS["count"] = 0
     METRICS["avg_ms"] = 0.0
     METRICS["max_ms"] = 0.0
     METRICS["violations"] = 0
+
+def get_semaphore_status():
+    return {
+        "max": MAX_CRITICAL_ACTIONS,
+        "available": CRITICAL_SEMAPHORE._value
+    }
+
