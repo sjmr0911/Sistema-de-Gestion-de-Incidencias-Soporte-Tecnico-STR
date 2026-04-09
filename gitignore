@@ -1,0 +1,54 @@
+# ================================
+# STR - Gestión de Incidencias
+# .gitignore
+# ================================
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+ENV/
+
+# Cache de Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Base de datos (generada en ejecución)
+incidents.db
+*.db
+*.sqlite3
+
+# Distribuciones / empaquetado
+*.egg-info/
+dist/
+build/
+*.egg
+*.whl
+
+# Variables de entorno y configuración local
+.env
+.env.local
+.env.*.local
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Sistemas operativos
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Mypy / linters
+.mypy_cache/
+.ruff_cache/

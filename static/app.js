@@ -1,98 +1,182 @@
+// ══════════════════════════════════════════════
+// app.js — Frontend del Sistema STR
+// Auto-refresh: incidencias cada 2s, errores cada 3s, métricas cada 2s
+// ══════════════════════════════════════════════
+
+
+// ──────────────────────────────────────────────
+// REGISTRO DE INCIDENCIA
+// ──────────────────────────────────────────────
+
 async function sendIncident() {
+    const user = document.getElementById("user").value.trim();
+    const desc = document.getElementById("desc").value.trim();
+
+    if (!user || !desc) {
+        document.getElementById("result").innerText = "⚠️ Usuario y descripción son obligatorios.";
+        return;
+    }
+
     const data = {
-        user: document.getElementById("user").value,
-        description: document.getElementById("desc").value,
+        user: user,
+        description: desc,
         type: document.getElementById("type").value,
-        severity: parseInt(document.getElementById("sev").value)
+        severity: parseInt(document.getElementById("sev").value),
     };
 
-    const res = await fetch("/incidents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-    });
+    try {
+        const res = await fetch("/incidents", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
 
-    const out = await res.json();
-    document.getElementById("result").innerText =
-        "Resultado: " + out.status;
-}
+        const out = await res.json();
 
-// 🔹 DASHBOARD
-
-async function loadIncidents(){
-    const res = await fetch("/api/incidents?limit=20");
-    const data = await res.json();
-    const tb = document.getElementById("incidents");
-    tb.innerHTML = "";
-
-    data.forEach(i=>{
-        let color = "#e5e7eb"; // gris (default)
-
-        if (i.severity === 4) color = "#fecaca";      // rojo (crítica)
-        else if (i.severity === 3) color = "#fde68a"; // amarillo (alta)
-        else if (i.severity === 2) color = "#bfdbfe"; // azul (media)
-        else if (i.severity === 1) color = "#bbf7d0"; // verde (baja)
-
-        tb.innerHTML += `<tr style="background:${color}">
-          <td>${i.id}</td>
-          <td>${i.user}</td>
-          <td>${i.type}</td>
-          <td>${i.severity}</td>
-          <td>${i.status}</td>
-        </tr>`;
-    });
+        if (res.status === 429) {
+            document.getElementById("result").innerText = "⚠️ Solicitud rechazada: intervalo mínimo STR violado (< 10 ms).";
+        } else {
+            document.getElementById("result").innerText = "✅ Incidencia registrada: " + out.status;
+        }
+    } catch (err) {
+        document.getElementById("result").innerText = "❌ Error de conexión: " + err.message;
+    }
 }
 
 
-async function loadErrors(){
-    const res = await fetch("/api/errors?limit=10");
-    const data = await res.json();
-    const ul = document.getElementById("errors");
-    ul.innerHTML = "";
-    data.forEach(e=>{
-        ul.innerHTML += `<li>[${e.module}] ${e.message}</li>`;
-    });
+// ──────────────────────────────────────────────
+// CARGA DE INCIDENCIAS (DASHBOARD)
+// ──────────────────────────────────────────────
+
+async function loadIncidents() {
+    try {
+        const res = await fetch("/api/incidents?limit=20");
+        const data = await res.json();
+        const tbody = document.getElementById("incidents");
+        tbody.innerHTML = "";
+
+        data.forEach(i => {
+            const sevClass = `sev-${i.severity}`;
+            tbody.innerHTML += `
+                <tr class="${sevClass}">
+                    <td>${i.id}</td>
+                    <td>${i.user}</td>
+                    <td>${i.type}</td>
+                    <td>${i.severity}</td>
+                    <td class="status">${i.status}</td>
+                </tr>`;
+        });
+    } catch (err) {
+        console.error("Error cargando incidencias:", err);
+    }
 }
 
-async function loadMetrics(){
-    const r = await fetch("/api/metrics");
-    const m = await r.json();
-    document.getElementById("metrics").innerText =
-        `Eventos: ${m.count} | Avg(ms): ${m.avg_ms.toFixed(2)} | Max(ms): ${m.max_ms.toFixed(2)} | Violaciones: ${m.violations}`;
+
+// ──────────────────────────────────────────────
+// CARGA DE ERRORES STR
+// ──────────────────────────────────────────────
+
+async function loadErrors() {
+    try {
+        const res = await fetch("/api/errors?limit=10");
+        const data = await res.json();
+        const ul = document.getElementById("errors");
+        ul.innerHTML = "";
+
+        if (data.length === 0) {
+            ul.innerHTML = "<li style='color:#6b7280'>Sin errores registrados.</li>";
+            return;
+        }
+
+        data.forEach(e => {
+            ul.innerHTML += `<li><strong>[${e.module}]</strong> ${e.message}</li>`;
+        });
+    } catch (err) {
+        console.error("Error cargando errores:", err);
+    }
 }
 
-async function stressTest(){
-    for(let i = 0; i < 30; i++){
+
+// ──────────────────────────────────────────────
+// CARGA DE MÉTRICAS Y SEMÁFORO
+// ──────────────────────────────────────────────
+
+async function loadMetrics() {
+    try {
+        const res = await fetch("/metrics");
+        const data = await res.json();
+        const m = data.metrics;
+        const sem = data.semaphore;
+
+        document.getElementById("metrics").innerText =
+            `Eventos: ${m.count} | Avg: ${m.avg_ms.toFixed(2)} ms | ` +
+            `Max: ${m.max_ms.toFixed(2)} ms | Violaciones: ${m.violations} | ` +
+            `Semáforo crítico: ${sem.available}/${sem.max} disponibles`;
+    } catch (err) {
+        console.error("Error cargando métricas:", err);
+    }
+}
+
+
+// ──────────────────────────────────────────────
+// PRUEBA DE ESTRÉS (desde el navegador)
+// ──────────────────────────────────────────────
+
+async function stressTest() {
+    document.getElementById("result").innerText = "⚡ Ejecutando prueba de estrés...";
+
+    for (let i = 0; i < 30; i++) {
         fetch("/incidents", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                user: "stress",
-                description: "Carga alta simulada",
+                user: "stress_test",
+                description: "Carga alta simulada desde el dashboard",
                 type: "red",
-                severity: 3
-            })
+                severity: 3,
+            }),
         });
     }
+
+    setTimeout(() => {
+        document.getElementById("result").innerText = "✅ Prueba de estrés completada. Revisa métricas y errores.";
+    }, 1500);
 }
 
-async function resetSystem(){
-    await fetch("/api/reset", { method: "POST" });
-    alert("Sistema limpiado");
-}
 
-async function resetSystem(){
-    const res = await fetch("/api/reset", { method: "POST" });
-    const out = await res.json();
+// ──────────────────────────────────────────────
+// RESET DEL SISTEMA
+// ──────────────────────────────────────────────
 
-    if(out.status === "system reset"){
-        alert("Sistema limpiado correctamente");
+async function resetSystem() {
+    if (!confirm("¿Confirmas que deseas limpiar todas las incidencias, errores y métricas?")) {
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/reset", { method: "POST" });
+        const out = await res.json();
+
+        if (out.status === "system reset") {
+            document.getElementById("result").innerText = "🧹 Sistema limpiado correctamente.";
+            loadIncidents();
+            loadErrors();
+            loadMetrics();
+        }
+    } catch (err) {
+        document.getElementById("result").innerText = "❌ Error al limpiar el sistema: " + err.message;
     }
 }
 
 
+// ──────────────────────────────────────────────
+// AUTO-REFRESH
+// ──────────────────────────────────────────────
 
-// 🔁 AUTO-REFRESH
+loadIncidents();
+loadErrors();
+loadMetrics();
+
 setInterval(loadIncidents, 2000);
-setInterval(loadErrors, 3000);
-setInterval(loadMetrics, 2000);
+setInterval(loadErrors,    3000);
+setInterval(loadMetrics,   2000);
